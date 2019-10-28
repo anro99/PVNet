@@ -10,12 +10,15 @@ namespace PVDataSampler
 {
     static class Program
     {
+        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main(string[] a_args)
         {
+            logger.Info("Arguments: {Arguments}", string.Concat(a_args));
             if (StartAsApp(a_args))
             {
                 Application.EnableVisualStyles();
@@ -33,6 +36,7 @@ namespace PVDataSampler
                 };
                 ServiceBase.Run(ServicesToRun);
             }
+            NLog.LogManager.Shutdown();
         }
 
 
