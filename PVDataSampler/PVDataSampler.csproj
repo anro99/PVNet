@@ -69,12 +69,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AppSettings.cs" />
+    <Compile Include="DataSampler.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="SerialHelper.cs" />
     <Compile Include="Service1.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -83,6 +86,26 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SettingsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SettingsForm.Designer.cs">
+      <DependentUpon>SettingsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Sml\SmartMeterSml.cs" />
+    <Compile Include="Sml\SmlBase.cs" />
+    <Compile Include="Sml\SmlFile.cs" />
+    <Compile Include="Sml\SmlMessage.cs" />
+    <Compile Include="Sml\SmlMessageBody.cs" />
+    <Compile Include="Sml\SmlPublicOpenResponse.cs" />
+    <Compile Include="Sml\SmlSigned16.cs" />
+    <Compile Include="Sml\SmlString.cs" />
+    <Compile Include="Sml\SmlTime.cs" />
+    <Compile Include="Sml\SmlTransport.cs" />
+    <Compile Include="Sml\SmlTypeLengthField.cs" />
+    <Compile Include="Sml\SmlUnsigned16.cs" />
+    <Compile Include="Sml\SmlUnsigned32.cs" />
+    <Compile Include="Sml\SmlUnsigned8.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -94,6 +117,9 @@
   <ItemGroup>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SettingsForm.resx">
+      <DependentUpon>SettingsForm.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

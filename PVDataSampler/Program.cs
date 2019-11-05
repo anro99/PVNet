@@ -19,6 +19,8 @@ namespace PVDataSampler
         static void Main(string[] a_args)
         {
             logger.Info("Arguments: {Arguments}", string.Concat(a_args));
+            logger.Info("Settings: GridCounter={gridCounter}", AppSettings.Instance.GridMeter);
+            logger.Info("Available serial ports: {serialPorts}", SerialHelper.GetSerialPorts());
             if (StartAsApp(a_args))
             {
                 Application.EnableVisualStyles();
