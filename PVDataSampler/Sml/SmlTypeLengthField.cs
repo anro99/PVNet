@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace PVDataSampler.Sml
 {
-    internal enum SmlType
+    internal enum SmlFieldType
     {
+        EndOfMessage,
         Optional,
         String,
         Boolean,
@@ -25,14 +26,33 @@ namespace PVDataSampler.Sml
 
     internal class SmlTypeLengthField : SmlBase
     {
-        private SmlType m_type = SmlType.Unknown;
+        private SmlFieldType m_type = SmlFieldType.Unknown;
         private int m_length = 0;
         private int m_nbTlBytes = 0;
+        private SmlBase m_parseResult = null;
+        private Encoding m_encoding;
 
-        public SmlType Type => m_type;
+        private static SmlTypeLengthField s_optional = new SmlTypeLengthField() { m_type = SmlFieldType.Optional, m_state = State.Done, m_length = 1, m_nbTlBytes = 1};
+        private static SmlTypeLengthField s_eom = new SmlTypeLengthField() { m_type = SmlFieldType.EndOfMessage, m_state = State.Done, m_length = 1, m_nbTlBytes = 1 };
+
+        public SmlFieldType Type => m_type;
         public int FieldLength => m_length;
         public int ValueLength => m_length - m_nbTlBytes;
         public int NbListElements => m_length;
+
+        public SmlTypeLengthField()
+            : this(null)
+        {
+
+        }
+
+        public SmlTypeLengthField(Encoding a_encoding)
+            : base()
+        {
+            m_encoding = a_encoding;
+        }
+
+        public override bool IsOptional => m_type == SmlFieldType.Optional;
 
 
         private enum State
@@ -45,7 +65,7 @@ namespace PVDataSampler.Sml
 
         private State m_state = State.WaitForFirstByte;
 
-        public override ParseResult Parse(byte a_byte)
+        internal ParseResult Parse(byte a_byte)
         {
             bool moreBytesNeeded;
             switch(m_state)
@@ -56,12 +76,14 @@ namespace PVDataSampler.Sml
                     {
                         case 0x00:
                             if (((a_byte & 0x0F) == 0x01) && !moreBytesNeeded)
-                                m_type = SmlType.Optional;
+                                m_type = SmlFieldType.Optional;
+                            else if (((a_byte & 0x0F) == 0x00) && !moreBytesNeeded)
+                                m_type = SmlFieldType.EndOfMessage;
                             else
-                                m_type = SmlType.String;
+                                m_type = SmlFieldType.String;
                             break;
                         case 0x40:
-                            m_type = SmlType.Boolean;
+                            m_type = SmlFieldType.Boolean;
                             if (moreBytesNeeded || ((a_byte & 0x0F) != 0x02))
                             {
                                 m_state = State.Failed;
@@ -77,16 +99,16 @@ namespace PVDataSampler.Sml
                             switch (a_byte & 0x0F)
                             {
                                 case 0x02:
-                                    m_type = SmlType.Signed8;
+                                    m_type = SmlFieldType.Signed8;
                                     break;
                                 case 0x03:
-                                    m_type = SmlType.Signed16;
+                                    m_type = SmlFieldType.Signed16;
                                     break;
                                 case 0x05:
-                                    m_type = SmlType.Signed32;
+                                    m_type = SmlFieldType.Signed32;
                                     break;
                                 case 0x09:
-                                    m_type = SmlType.Signed64;
+                                    m_type = SmlFieldType.Signed64;
                                     break;
                                 default:
                                     m_state = State.Failed;
@@ -102,16 +124,16 @@ namespace PVDataSampler.Sml
                             switch (a_byte & 0x0F)
                             {
                                 case 0x02:
-                                    m_type = SmlType.Unsigned8;
+                                    m_type = SmlFieldType.Unsigned8;
                                     break;
                                 case 0x03:
-                                    m_type = SmlType.Unsigned16;
+                                    m_type = SmlFieldType.Unsigned16;
                                     break;
                                 case 0x05:
-                                    m_type = SmlType.Unsigned32;
+                                    m_type = SmlFieldType.Unsigned32;
                                     break;
                                 case 0x09:
-                                    m_type = SmlType.Unsigned64;
+                                    m_type = SmlFieldType.Unsigned64;
                                     break;
                                 default:
                                     m_state = State.Failed;
@@ -119,7 +141,7 @@ namespace PVDataSampler.Sml
                             }
                             break;
                         case 0x70:
-                            m_type = SmlType.List;
+                            m_type = SmlFieldType.List;
                             break;
                         default:
                             m_state = State.Failed;
@@ -148,6 +170,99 @@ namespace PVDataSampler.Sml
                     m_state = State.Failed;
                     return ParseResult.Failed;
             }
+        }
+
+        public override ParseResult BeginPopulate()
+        {
+            m_parseResult = null;
+            return ParseResult.MoreBytesNeeded;
+        }
+
+        public override ParseResult ContinuePopulate(byte a_byte)
+        {
+            ParseResult res;
+            if (m_parseResult == null)
+            {
+                res = Parse(a_byte);
+                if (res != ParseResult.Done)
+                    return res;
+
+                switch (m_type)
+                {
+                    case SmlFieldType.EndOfMessage:
+                        m_parseResult = s_eom;
+                        return ParseResult.Done;
+
+                    case SmlFieldType.Optional:
+                        m_parseResult = s_optional;
+                        return ParseResult.Done;
+
+                    case SmlFieldType.Boolean:
+                        m_parseResult = new SmlBool(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Signed8:
+                        m_parseResult = new SmlSigned8(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Signed16:
+                        m_parseResult = new SmlSigned16(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Signed32:
+                        m_parseResult = new SmlSigned32(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Signed64:
+                        m_parseResult = new SmlSigned64(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Unsigned8:
+                        m_parseResult = new SmlUnsigned8(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Unsigned16:
+                        m_parseResult = new SmlUnsigned16(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Unsigned32:
+                        m_parseResult = new SmlUnsigned32(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.Unsigned64:
+                        m_parseResult = new SmlUnsigned64(this);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.String:
+                        m_parseResult = new SmlString(this, m_encoding);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+
+                    case SmlFieldType.List:
+                        m_parseResult = new SmlList(this, m_encoding);
+                        res = m_parseResult.BeginPopulate();
+                        break;
+                }
+            }
+            else
+            {
+                res = m_parseResult.ContinuePopulate(a_byte);
+            }
+            return res;
+        }
+
+        public override SmlBase EndPopulate()
+        {
+            return m_parseResult;
         }
     }
 }

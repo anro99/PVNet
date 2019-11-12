@@ -6,69 +6,25 @@ using System.Threading.Tasks;
 
 namespace PVDataSampler.Sml
 {
-    internal class SmlUnsigned8 : SmlBase
+    internal class SmlUnsigned8 : SmlSimpleValue<byte?>
     {
-        private SmlTypeLengthField m_tl = new SmlTypeLengthField();
-        private byte? m_value = null;
-
         public SmlUnsigned8()
+            : base()
         {
-            m_state = State.WaitForTL;
         }
 
-        public byte? Value => m_value;
-
-        private enum State
+        public SmlUnsigned8(SmlTypeLengthField a_smlTypeLengthField)
+            : base(a_smlTypeLengthField)
         {
-            Done,
-            Failed,
-            WaitForTL,
-            WaitForValueByte,
         }
 
-        private State m_state;
+        protected override SmlFieldType CorespondingSmlType => SmlFieldType.Unsigned8;
 
+        protected override byte? InitialValue => 0;
 
-        public override ParseResult Parse(byte a_byte)
+        protected override byte? AddNextByte(byte? a_currentValue, byte a_nextByte)
         {
-            switch (m_state)
-            {
-                case State.Done:
-                    m_state = State.Failed;
-                    return ParseResult.Failed;
-
-                case State.WaitForTL:
-                    switch (m_tl.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            switch (m_tl.Type)
-                            {
-                                case SmlType.Optional:
-                                    m_value = null;
-                                    m_state = State.Done;
-                                    return ParseResult.Done;
-                                case SmlType.Unsigned8:
-                                    m_state = State.WaitForValueByte;
-                                    return ParseResult.MoreBytesNeeded;
-                                default:
-                                    m_state = State.Failed;
-                                    return ParseResult.Failed;
-                            }
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForValueByte:
-                    m_value = a_byte;
-                    m_state = State.Done;
-                    return ParseResult.Done;
-
-                default:
-                    return ParseResult.Failed;
-            }
+            return a_nextByte;
         }
     }
 }

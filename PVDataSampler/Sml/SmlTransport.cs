@@ -21,6 +21,7 @@ namespace PVDataSampler.Sml
         private const byte ESCAPE_BYTE = 0x1b;
         private const byte START_BYTE = 0x01;
         private const byte STOP_BYTE = 0x1a;
+        private const byte FILL_BYTE = 0x00;
 
         private enum ParserState
         {
@@ -43,6 +44,15 @@ namespace PVDataSampler.Sml
             WaitForThirdEscapedEscapeByte,
             WaitForFourthEscapedEscapeByte,
 
+            WaitForFirstFillByteOrFirstEscapeByte,
+            WaitForSecondFillByteOrFirstEscapeByte,
+            WaitForThirdFillByteOrFirstEscapeByte,
+
+            WaitForEndMessageSecondEscapeByte,
+            WaitForEndMessageThirdEscapeByte,
+            WaitForEndMessageFourthEscapeByte,
+
+            WaitForStopByte,
             WaitForNbFillBytes,
             WaitForFirstCheckSumByte,
             WaitForSecondCheckSumByte
@@ -99,6 +109,7 @@ namespace PVDataSampler.Sml
                     {
                         m_parserState = ParserState.WaitForMessageByte;
                         m_smlFile = new SmlFile();
+                        m_smlFile.BeginPopulate();
                     }
                     else
                         m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
@@ -108,60 +119,30 @@ namespace PVDataSampler.Sml
                     if (a_newByte == ESCAPE_BYTE)
                         m_parserState = ParserState.WaitForSecondEscapeByteInMessage;
                     else
-                        if (ParseResult.Failed == m_smlFile.Parse(a_newByte))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                        HandleBytesForFile(0, a_newByte);
                     break;
 
                 case ParserState.WaitForSecondEscapeByteInMessage:
                     if (a_newByte == ESCAPE_BYTE)
                         m_parserState = ParserState.WaitForThirdEscapeByteInMessage;
                     else
-                    {
-                        if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(a_newByte))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else
-                            m_parserState = ParserState.WaitForMessageByte;
-                    }
+                        HandleBytesForFile(1, a_newByte);
                     break;
                 case ParserState.WaitForThirdEscapeByteInMessage:
                     if (a_newByte == ESCAPE_BYTE)
                         m_parserState = ParserState.WaitForFourthEscapeByteInMessage;
                     else
-                    {
-                        if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(a_newByte))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else
-                            m_parserState = ParserState.WaitForMessageByte;
-                    }
+                        HandleBytesForFile(2, a_newByte);
                     break;
                 case ParserState.WaitForFourthEscapeByteInMessage:
                     if (a_newByte == ESCAPE_BYTE)
                         m_parserState = ParserState.WaitForFirstEscapedByte;
                     else
-                    {
-                        if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(a_newByte))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else
-                            m_parserState = ParserState.WaitForMessageByte;
-                    }
+                        HandleBytesForFile(3, a_newByte);
                     break;
                 case ParserState.WaitForFirstEscapedByte:
                     if (a_newByte == ESCAPE_BYTE)
                         m_parserState = ParserState.WaitForSecondEscapedEscapeByte;
-                    else if (a_newByte == STOP_BYTE)
-                        m_parserState = ParserState.WaitForNbFillBytes;
                     else
                         m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
                     break;
@@ -179,21 +160,86 @@ namespace PVDataSampler.Sml
                     break;
                 case ParserState.WaitForFourthEscapedEscapeByte:
                     if (a_newByte == ESCAPE_BYTE)
-                    {
-                        if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else if (ParseResult.Failed == m_smlFile.Parse(ESCAPE_BYTE))
-                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
-                        else
-                            m_parserState = ParserState.WaitForMessageByte;
-                    }
+                        HandleBytesForFile(3, ESCAPE_BYTE);
                     else
                         m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
                     break;
+
+                case ParserState.WaitForFirstFillByteOrFirstEscapeByte:
+                    switch (a_newByte)
+                    {
+                        case FILL_BYTE:
+                            m_parserState = ParserState.WaitForSecondFillByteOrFirstEscapeByte;
+                            break;
+                        case ESCAPE_BYTE:
+                            m_parserState = ParserState.WaitForEndMessageSecondEscapeByte;
+                            break;
+                        default:
+                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                            break;
+                    }
+                    break;
+
+                case ParserState.WaitForSecondFillByteOrFirstEscapeByte:
+                    switch (a_newByte)
+                    {
+                        case FILL_BYTE:
+                            m_parserState = ParserState.WaitForThirdFillByteOrFirstEscapeByte;
+                            break;
+                        case ESCAPE_BYTE:
+                            m_parserState = ParserState.WaitForEndMessageSecondEscapeByte;
+                            break;
+                        default:
+                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                            break;
+                    }
+                    break;
+
+                case ParserState.WaitForThirdFillByteOrFirstEscapeByte:
+                    switch (a_newByte)
+                    {
+                        case FILL_BYTE:
+                            m_parserState = ParserState.WaitForThirdFillByteOrFirstEscapeByte;
+                            break;
+                        case ESCAPE_BYTE:
+                            m_parserState = ParserState.WaitForEndMessageSecondEscapeByte;
+                            break;
+                        default:
+                            m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                            break;
+                    }
+                    break;
+
+                case ParserState.WaitForEndMessageSecondEscapeByte:
+                    if (a_newByte == ESCAPE_BYTE)
+                        m_parserState = ParserState.WaitForEndMessageThirdEscapeByte;
+                    else
+                        m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                    break;
+
+                case ParserState.WaitForEndMessageThirdEscapeByte:
+                    if (a_newByte == ESCAPE_BYTE)
+                        m_parserState = ParserState.WaitForEndMessageFourthEscapeByte;
+                    else
+                        m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                    break;
+
+                case ParserState.WaitForEndMessageFourthEscapeByte:
+                    if (a_newByte == ESCAPE_BYTE)
+                        m_parserState = ParserState.WaitForStopByte;
+                    else
+                        m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                    break;
+
+                case ParserState.WaitForStopByte:
+                    if (a_newByte == STOP_BYTE)
+                        m_parserState = ParserState.WaitForNbFillBytes;
+                    else if (a_newByte == ESCAPE_BYTE)
+                        m_parserState = ParserState.WaitForStartMessageSecondEscapeByte;
+                    else
+                        m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                    break;
+
 
                 case ParserState.WaitForNbFillBytes:
                     switch (a_newByte)
@@ -219,6 +265,43 @@ namespace PVDataSampler.Sml
                 case ParserState.WaitForSecondCheckSumByte:
                     m_messageCheckSum = (ushort)((m_messageCheckSum << 8) + a_newByte);
                     m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                    break;
+            }
+        }
+
+        private void HandleBytesForFile(int a_nbEscapeBytes, byte a_byte)
+        {
+            for(int i = 0; i > a_nbEscapeBytes; i++)
+            {
+                switch (m_smlFile.ContinuePopulate(ESCAPE_BYTE))
+                {
+                    case ParseResult.Failed:
+                        m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                        for (; i > a_nbEscapeBytes; i++)
+                            Parse(ESCAPE_BYTE);
+                        Parse(a_byte);
+                        return;
+                    case ParseResult.Done:
+                        m_parserState = ParserState.WaitForFirstFillByteOrFirstEscapeByte;
+                        for (; i > a_nbEscapeBytes; i++)
+                            Parse(ESCAPE_BYTE);
+                        Parse(a_byte);
+                        return;
+                    default:
+                        break;
+                }
+            }
+
+            switch (m_smlFile.ContinuePopulate(a_byte))
+            {
+                case ParseResult.Failed:
+                    m_parserState = ParserState.WaitForStartMessageFirstEscapeByte;
+                    break;
+                case ParseResult.Done:
+                    m_parserState = ParserState.WaitForFirstFillByteOrFirstEscapeByte;
+                    break;
+                default:
+                    m_parserState = ParserState.WaitForMessageByte;
                     break;
             }
         }

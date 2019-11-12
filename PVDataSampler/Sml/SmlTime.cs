@@ -24,7 +24,7 @@ namespace PVDataSampler.Sml
         {
             get
             {
-                if (m_tl.Type == SmlType.Optional || m_state != State.Done)
+                if (m_tl.Type == SmlFieldType.Optional || m_state != State.Done)
                     return null;
                 switch(m_choice.Value)
                 {
@@ -58,7 +58,7 @@ namespace PVDataSampler.Sml
         private State m_state;
 
 
-        public override ParseResult Parse(byte a_byte)
+        public ParseResult Parse(byte a_byte)
         {
             switch (m_state)
             {
@@ -74,10 +74,10 @@ namespace PVDataSampler.Sml
                         case ParseResult.Done:
                             switch (m_tl.Type)
                             {
-                                case SmlType.Optional:
+                                case SmlFieldType.Optional:
                                     m_state = State.Done;
                                     return ParseResult.Done;
-                                case SmlType.List:
+                                case SmlFieldType.List:
                                     if (m_tl.NbListElements != 2)
                                     {
                                         m_state = State.Failed;
@@ -155,10 +155,10 @@ namespace PVDataSampler.Sml
                         case ParseResult.Done:
                             switch (m_tl.Type)
                             {
-                                case SmlType.Optional:
+                                case SmlFieldType.Optional:
                                     m_state = State.Failed;
                                     return ParseResult.Failed;
-                                case SmlType.List:
+                                case SmlFieldType.List:
                                     if (m_tl.NbListElements != 3)
                                     {
                                         m_state = State.Failed;
@@ -239,6 +239,21 @@ namespace PVDataSampler.Sml
                 default:
                     return ParseResult.Failed;
             }
+        }
+
+        public override ParseResult BeginPopulate()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override ParseResult ContinuePopulate(byte a_byte)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override SmlBase EndPopulate()
+        {
+            throw new NotImplementedException();
         }
     }
 }

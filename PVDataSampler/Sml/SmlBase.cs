@@ -16,6 +16,12 @@ namespace PVDataSampler.Sml
 
     internal abstract class SmlBase
     {
-        public abstract ParseResult Parse(byte a_byte);
+        public virtual bool IsOptional => false;
+
+        public abstract ParseResult BeginPopulate();
+
+        public abstract ParseResult ContinuePopulate(byte a_byte);
+
+        public abstract SmlBase EndPopulate();
     }
 }

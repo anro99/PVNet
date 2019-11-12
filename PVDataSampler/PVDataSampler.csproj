@@ -94,17 +94,25 @@
     </Compile>
     <Compile Include="Sml\SmartMeterSml.cs" />
     <Compile Include="Sml\SmlBase.cs" />
+    <Compile Include="Sml\SmlBool.cs" />
+    <Compile Include="Sml\SmlCloseResponse.cs" />
     <Compile Include="Sml\SmlFile.cs" />
+    <Compile Include="Sml\SmlList.cs" />
     <Compile Include="Sml\SmlMessage.cs" />
     <Compile Include="Sml\SmlMessageBody.cs" />
-    <Compile Include="Sml\SmlPublicOpenResponse.cs" />
+    <Compile Include="Sml\SmlOpenResponse.cs" />
     <Compile Include="Sml\SmlSigned16.cs" />
+    <Compile Include="Sml\SmlSigned32.cs" />
+    <Compile Include="Sml\SmlSigned64.cs" />
+    <Compile Include="Sml\SmlSigned8.cs" />
+    <Compile Include="Sml\SmlSimpleValue.cs" />
     <Compile Include="Sml\SmlString.cs" />
     <Compile Include="Sml\SmlTime.cs" />
     <Compile Include="Sml\SmlTransport.cs" />
     <Compile Include="Sml\SmlTypeLengthField.cs" />
     <Compile Include="Sml\SmlUnsigned16.cs" />
     <Compile Include="Sml\SmlUnsigned32.cs" />
+    <Compile Include="Sml\SmlUnsigned64.cs" />
     <Compile Include="Sml\SmlUnsigned8.cs" />
   </ItemGroup>
   <ItemGroup>
