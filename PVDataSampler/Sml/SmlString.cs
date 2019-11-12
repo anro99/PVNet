@@ -29,11 +29,14 @@ namespace PVDataSampler.Sml
                 m_encoding = a_encoding;
             else
                 m_encoding = DefaultEncoding;
+            m_string = null;
+            m_bytes = null;
         }
 
         public SmlString(byte[] a_bytes, Encoding a_encoding)
         {
             m_bytes = a_bytes;
+            m_string = null;
             if (a_encoding != null)
                 m_encoding = a_encoding;
             else

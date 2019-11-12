@@ -6,254 +6,68 @@ using System.Threading.Tasks;
 
 namespace PVDataSampler.Sml
 {
-    internal class SmlTime : SmlBase
+    internal class SmlTime
     {
-        private SmlTypeLengthField m_tl = new SmlTypeLengthField();
-        private SmlUnsigned8 m_choice;
-        private SmlUnsigned32 m_unsigned32;
-        private SmlSigned16 m_offset;
-        private SmlSigned16 m_seasonalOffset;
+        private bool m_isSecIndex = false;
+        private DateTime m_time;
+        private TimeSpan m_secIndex;
 
 
-        public SmlTime()
+        private SmlTime(TimeSpan a_secIndex)
         {
-            m_state = State.WaitForTL;
+            m_isSecIndex = true;
+            m_secIndex = a_secIndex;
         }
 
-        public (DateTime? a_date,TimeSpan? a_secondIndex)? Value
+        private SmlTime(DateTime a_time)
         {
-            get
+            m_isSecIndex = false;
+            m_time = a_time;
+        }
+
+
+        public static SmlTime Create(SmlBase a_baseNode)
+        {
+            var list = a_baseNode as SmlList;
+            if (list == null || list.Length != 2)
+                return null;
+
+            var choice = list.GetElement(0) as SmlUnsigned8;
+            if (choice == null)
+                return null;
+            switch(choice.Value)
             {
-                if (m_tl.Type == SmlFieldType.Optional || m_state != State.Done)
-                    return null;
-                switch(m_choice.Value)
-                {
-                    case 0x00:
-                        return (null, TimeSpan.FromSeconds(m_unsigned32.Value.GetValueOrDefault()));
-                    case 0x01:
-                        return (new DateTime(1970, 1, 1).AddSeconds(m_unsigned32.Value.GetValueOrDefault()), null);
-                    case 0x02:
-                        var date = new DateTime(1970, 1, 1).AddSeconds(m_unsigned32.Value.GetValueOrDefault());
-                        date = date.AddMinutes(m_offset.Value.GetValueOrDefault() + m_seasonalOffset.Value.GetValueOrDefault());
-                        return (date, null);
-                    default:
+                case 0x00:
+                    var secIndex = list.GetElement(1) as SmlUnsigned32;
+                    if (secIndex == null)
                         return null;
-                }
-            }
-        }
-
-        private enum State
-        {
-            Done,
-            Failed,
-            WaitForTL,
-            WaitForChoice,
-            WaitForUint32,
-            WaitForLocalTimeTl,
-            WaitForLocalTimeTimestamp,
-            WaitForLocalTimeOffset,
-            WaitForLocalTimeSeasonalTimeOffset,
-        }
-
-        private State m_state;
-
-
-        public ParseResult Parse(byte a_byte)
-        {
-            switch (m_state)
-            {
-                case State.Done:
-                    m_state = State.Failed;
-                    return ParseResult.Failed;
-
-                case State.WaitForTL:
-                    switch (m_tl.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            switch (m_tl.Type)
-                            {
-                                case SmlFieldType.Optional:
-                                    m_state = State.Done;
-                                    return ParseResult.Done;
-                                case SmlFieldType.List:
-                                    if (m_tl.NbListElements != 2)
-                                    {
-                                        m_state = State.Failed;
-                                        return ParseResult.Failed;
-                                    }
-                                    m_choice = new SmlUnsigned8();
-                                    m_state = State.WaitForChoice;
-                                    return ParseResult.MoreBytesNeeded;
-                                default:
-                                    m_state = State.Failed;
-                                    return ParseResult.Failed;
-                            }
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForChoice:
-                    switch (m_choice.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            if (m_choice.Value == null)
-                            {
-                                m_state = State.Failed;
-                                return ParseResult.Failed;
-                            }
-                            switch (m_choice.Value)
-                            {
-                                case 0x01:
-                                case 0x02:
-                                    m_unsigned32 = new SmlUnsigned32();
-                                    m_state = State.WaitForUint32;
-                                    break;
-                                case 0x03:
-                                    m_tl = new SmlTypeLengthField();
-                                    m_state = State.WaitForLocalTimeTl;
-                                    break;
-                                default:
-                                    m_state = State.Failed;
-                                    return ParseResult.Failed;
-                            }
-                            return ParseResult.MoreBytesNeeded;
-
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForUint32:
-                    switch (m_choice.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            if (m_unsigned32.Value == null)
-                            {
-                                m_state = State.Failed;
-                                return ParseResult.Failed;
-                            }
-                            m_state = State.Done;
-                            return ParseResult.Done;
-
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForLocalTimeTl:
-                    switch (m_tl.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            switch (m_tl.Type)
-                            {
-                                case SmlFieldType.Optional:
-                                    m_state = State.Failed;
-                                    return ParseResult.Failed;
-                                case SmlFieldType.List:
-                                    if (m_tl.NbListElements != 3)
-                                    {
-                                        m_state = State.Failed;
-                                        return ParseResult.Failed;
-                                    }
-                                    m_unsigned32 = new SmlUnsigned32();
-                                    m_state = State.WaitForLocalTimeTimestamp;
-                                    return ParseResult.MoreBytesNeeded;
-                                default:
-                                    m_state = State.Failed;
-                                    return ParseResult.Failed;
-                            }
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForLocalTimeTimestamp:
-                    switch (m_unsigned32.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            if (m_unsigned32.Value == null)
-                            {
-                                m_state = State.Failed;
-                                return ParseResult.Failed;
-                            }
-                            m_offset = new SmlSigned16();
-                            m_state = State.WaitForLocalTimeOffset;
-                            return ParseResult.MoreBytesNeeded;
-
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForLocalTimeOffset:
-                    switch (m_offset.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            if (m_unsigned32.Value == null)
-                            {
-                                m_state = State.Failed;
-                                return ParseResult.Failed;
-                            }
-                            m_seasonalOffset = new SmlSigned16();
-                            m_state = State.WaitForLocalTimeSeasonalTimeOffset;
-                            return ParseResult.MoreBytesNeeded;
-
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-                case State.WaitForLocalTimeSeasonalTimeOffset:
-                    switch (m_seasonalOffset.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            if (m_unsigned32.Value == null)
-                            {
-                                m_state = State.Failed;
-                                return ParseResult.Failed;
-                            }
-                            m_state = State.Done;
-                            return ParseResult.Done;
-
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
-
-
+                    return new SmlTime(TimeSpan.FromSeconds(secIndex.Value));
+                case 0x01:
+                    var secUnixUtc = list.GetElement(1) as SmlUnsigned32;
+                    if (secUnixUtc == null)
+                        return null;
+                    return new SmlTime(new DateTime(1970, 1, 1).AddSeconds(secUnixUtc.Value));
+                case 0x02:
+                    var localTime = list.GetElement(1) as SmlList;
+                    if (localTime == null || localTime.Length != 3)
+                        return null;
+                    var secUnixLocal = localTime.GetElement(0) as SmlUnsigned32;
+                    var localOffsetMins = localTime.GetElement(1) as SmlSigned16;
+                    var seasonOffsetMins = localTime.GetElement(2) as SmlSigned16;
+                    if (secUnixLocal == null || localOffsetMins == null || seasonOffsetMins == null)
+                        return null;
+                    var date = new DateTime(1970, 1, 1).AddSeconds(secUnixLocal.Value);
+                    date = date.AddMinutes(localOffsetMins.Value + seasonOffsetMins.Value);
+                    return new SmlTime(date);
                 default:
-                    return ParseResult.Failed;
+                    return null;
             }
         }
 
-        public override ParseResult BeginPopulate()
-        {
-            throw new NotImplementedException();
-        }
+        public bool IsSecondIndex => m_isSecIndex;
 
-        public override ParseResult ContinuePopulate(byte a_byte)
-        {
-            throw new NotImplementedException();
-        }
+        public DateTime Time => m_time;
 
-        public override SmlBase EndPopulate()
-        {
-            throw new NotImplementedException();
-        }
+        public TimeSpan SecondIndex => m_secIndex;
     }
 }

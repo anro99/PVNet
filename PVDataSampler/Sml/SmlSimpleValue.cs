@@ -12,9 +12,9 @@ namespace PVDataSampler.Sml
         private T m_value = default(T);
         private int m_nbBytesRead;
 
-        public SmlSimpleValue()
+        protected SmlSimpleValue()
         {
-            m_state = State.WaitForTL;
+            m_state = State.Done;
         }
 
         protected SmlSimpleValue(SmlTypeLengthField a_typeLengthField)
@@ -32,7 +32,7 @@ namespace PVDataSampler.Sml
                 }
             }
             else
-                m_state = State.WaitForTL;
+                throw new ArgumentNullException();
         }
 
         protected abstract SmlFieldType CorespondingSmlType { get; }
@@ -47,47 +47,23 @@ namespace PVDataSampler.Sml
         {
             Done,
             Failed,
-            WaitForTL,
             WaitForValueByte,
         }
 
         private State m_state;
 
-        public ParseResult Parse(byte a_byte)
+        public override ParseResult BeginPopulate()
+        {
+            return ParseResult.MoreBytesNeeded;
+        }
+
+        public override ParseResult ContinuePopulate(byte a_byte)
         {
             switch (m_state)
             {
                 case State.Done:
                     m_state = State.Failed;
                     return ParseResult.Failed;
-
-                case State.WaitForTL:
-                    switch (m_tl.Parse(a_byte))
-                    {
-                        case ParseResult.MoreBytesNeeded:
-                            return ParseResult.MoreBytesNeeded;
-                        case ParseResult.Done:
-                            if (m_tl.Type == SmlFieldType.Optional)
-                            {
-                                m_value = default(T);
-                                m_state = State.Done;
-                                return ParseResult.Done;
-                            }
-
-                            if (m_tl.Type == CorespondingSmlType)
-                            {
-                                    m_value = InitialValue;
-                                    m_nbBytesRead = 0;
-                                    m_state = State.WaitForValueByte;
-                                    return ParseResult.MoreBytesNeeded;
-                            }
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-
-                        default:
-                            m_state = State.Failed;
-                            return ParseResult.Failed;
-                    }
 
                 case State.WaitForValueByte:
                     m_value = AddNextByte(m_value, a_byte);
@@ -103,19 +79,6 @@ namespace PVDataSampler.Sml
                 default:
                     return ParseResult.Failed;
             }
-        }
-
-        public override ParseResult BeginPopulate()
-        {
-            return ParseResult.MoreBytesNeeded;
-        }
-
-        public override ParseResult ContinuePopulate(byte a_byte)
-        {
-            if (m_state == State.Done || m_state == State.Failed || m_state == State.WaitForTL)
-                return ParseResult.Failed;
-
-            return Parse(a_byte);
         }
 
         public override SmlBase EndPopulate()

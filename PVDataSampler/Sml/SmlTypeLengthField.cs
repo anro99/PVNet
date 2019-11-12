@@ -60,12 +60,13 @@ namespace PVDataSampler.Sml
             Done,
             Failed,
             WaitForFirstByte,
-            WaitForNextByte
+            WaitForNextByte,
+            ForewardToResult,
         }
 
         private State m_state = State.WaitForFirstByte;
 
-        internal ParseResult Parse(byte a_byte)
+        private ParseResult Parse(byte a_byte)
         {
             bool moreBytesNeeded;
             switch(m_state)
@@ -166,6 +167,9 @@ namespace PVDataSampler.Sml
                             return ParseResult.Failed;
                     }
 
+                case State.ForewardToResult:
+
+
                 default:
                     m_state = State.Failed;
                     return ParseResult.Failed;
@@ -180,82 +184,205 @@ namespace PVDataSampler.Sml
 
         public override ParseResult ContinuePopulate(byte a_byte)
         {
-            ParseResult res;
-            if (m_parseResult == null)
+            bool moreBytesNeeded;
+            switch (m_state)
             {
-                res = Parse(a_byte);
-                if (res != ParseResult.Done)
-                    return res;
+                case State.WaitForFirstByte:
+                    moreBytesNeeded = (a_byte & 0x80) == 0x80;
+                    switch (a_byte & 0x70)
+                    {
+                        case 0x00:
+                            if (((a_byte & 0x0F) == 0x01) && !moreBytesNeeded)
+                                m_type = SmlFieldType.Optional;
+                            else if (((a_byte & 0x0F) == 0x00) && !moreBytesNeeded)
+                                m_type = SmlFieldType.EndOfMessage;
+                            else
+                                m_type = SmlFieldType.String;
+                            break;
+                        case 0x40:
+                            m_type = SmlFieldType.Boolean;
+                            if (moreBytesNeeded || ((a_byte & 0x0F) != 0x02))
+                            {
+                                m_state = State.Failed;
+                                return ParseResult.Failed;
+                            }
+                            break;
+                        case 0x50:
+                            if (moreBytesNeeded)
+                            {
+                                m_state = State.Failed;
+                                return ParseResult.Failed;
+                            }
+                            switch (a_byte & 0x0F)
+                            {
+                                case 0x02:
+                                    m_type = SmlFieldType.Signed8;
+                                    break;
+                                case 0x03:
+                                    m_type = SmlFieldType.Signed16;
+                                    break;
+                                case 0x05:
+                                    m_type = SmlFieldType.Signed32;
+                                    break;
+                                case 0x09:
+                                    m_type = SmlFieldType.Signed64;
+                                    break;
+                                default:
+                                    m_state = State.Failed;
+                                    return ParseResult.Failed;
+                            }
+                            break;
+                        case 0x60:
+                            if (moreBytesNeeded)
+                            {
+                                m_state = State.Failed;
+                                return ParseResult.Failed;
+                            }
+                            switch (a_byte & 0x0F)
+                            {
+                                case 0x02:
+                                    m_type = SmlFieldType.Unsigned8;
+                                    break;
+                                case 0x03:
+                                    m_type = SmlFieldType.Unsigned16;
+                                    break;
+                                case 0x05:
+                                    m_type = SmlFieldType.Unsigned32;
+                                    break;
+                                case 0x09:
+                                    m_type = SmlFieldType.Unsigned64;
+                                    break;
+                                default:
+                                    m_state = State.Failed;
+                                    return ParseResult.Failed;
+                            }
+                            break;
+                        case 0x70:
+                            m_type = SmlFieldType.List;
+                            break;
+                        default:
+                            m_state = State.Failed;
+                            return ParseResult.Failed;
+                    }
+                    m_nbTlBytes = 1;
+                    m_length = (a_byte & 0x0F);
 
-                switch (m_type)
-                {
-                    case SmlFieldType.EndOfMessage:
-                        m_parseResult = s_eom;
-                        return ParseResult.Done;
+                    if (moreBytesNeeded)
+                    {
+                        m_state = State.WaitForNextByte;
+                        return ParseResult.MoreBytesNeeded;
+                    }
+                    return CreateParseResult();
 
-                    case SmlFieldType.Optional:
-                        m_parseResult = s_optional;
-                        return ParseResult.Done;
+                case State.WaitForNextByte:
+                    moreBytesNeeded = (a_byte & 0x80) == 0x80;
+                    switch (a_byte & 0x70)
+                    {
+                        case 0x00:
+                            m_nbTlBytes++;
+                            m_length = (m_length << 4) | (a_byte & 0x0F);
+                            if (moreBytesNeeded)
+                            {
+                                m_state = State.WaitForNextByte;
+                                return ParseResult.MoreBytesNeeded;
+                            }
+                            return CreateParseResult();
+                        default:
+                            m_state = State.Failed;
+                            return ParseResult.Failed;
+                    }
 
-                    case SmlFieldType.Boolean:
-                        m_parseResult = new SmlBool(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
+                case State.ForewardToResult:
+                    return m_parseResult.ContinuePopulate(a_byte);
 
-                    case SmlFieldType.Signed8:
-                        m_parseResult = new SmlSigned8(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Signed16:
-                        m_parseResult = new SmlSigned16(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Signed32:
-                        m_parseResult = new SmlSigned32(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Signed64:
-                        m_parseResult = new SmlSigned64(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Unsigned8:
-                        m_parseResult = new SmlUnsigned8(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Unsigned16:
-                        m_parseResult = new SmlUnsigned16(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Unsigned32:
-                        m_parseResult = new SmlUnsigned32(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.Unsigned64:
-                        m_parseResult = new SmlUnsigned64(this);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.String:
-                        m_parseResult = new SmlString(this, m_encoding);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-
-                    case SmlFieldType.List:
-                        m_parseResult = new SmlList(this, m_encoding);
-                        res = m_parseResult.BeginPopulate();
-                        break;
-                }
+                default:
+                    m_state = State.Failed;
+                    return ParseResult.Failed;
             }
-            else
+        }
+
+        internal ParseResult CreateParseResult()
+        {
+            ParseResult res = ParseResult.Failed;
+            switch (m_type)
             {
-                res = m_parseResult.ContinuePopulate(a_byte);
+                case SmlFieldType.EndOfMessage:
+                    m_parseResult = s_eom;
+                    res = ParseResult.Done;
+                    break;
+
+                case SmlFieldType.Optional:
+                    m_parseResult = s_optional;
+                    res = ParseResult.Done;
+                    break;
+
+                case SmlFieldType.Boolean:
+                    m_parseResult = new SmlBool(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Signed8:
+                    m_parseResult = new SmlSigned8(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Signed16:
+                    m_parseResult = new SmlSigned16(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Signed32:
+                    m_parseResult = new SmlSigned32(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Signed64:
+                    m_parseResult = new SmlSigned64(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Unsigned8:
+                    m_parseResult = new SmlUnsigned8(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Unsigned16:
+                    m_parseResult = new SmlUnsigned16(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Unsigned32:
+                    m_parseResult = new SmlUnsigned32(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.Unsigned64:
+                    m_parseResult = new SmlUnsigned64(this);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.String:
+                    m_parseResult = new SmlString(this, m_encoding);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+
+                case SmlFieldType.List:
+                    m_parseResult = new SmlList(this, m_encoding);
+                    res = m_parseResult.BeginPopulate();
+                    break;
+            }
+
+            switch(res)
+            {
+                case ParseResult.Failed:
+                    m_state = State.Failed;
+                    break;
+                case ParseResult.Done:
+                    m_state = State.Done;
+                    break;
+                default:
+                    m_state = State.ForewardToResult;
+                    break;
             }
             return res;
         }

@@ -17,7 +17,7 @@ namespace PVDataSampler.Sml
         SmlTime m_time;
         SmlUnsigned8 m_version;
 
-        private SmlOpenResponse( SmlString a_codePage, SmlString a_clientId, SmlString a_requestFileId, SmlString a_serverId, SmlUnsigned8 a_version)
+        private SmlOpenResponse( SmlString a_codePage, SmlString a_clientId, SmlString a_requestFileId, SmlString a_serverId, SmlTime a_time, SmlUnsigned8 a_version)
         {
             m_codePage = a_codePage;
             if (m_codePage != null)
@@ -27,7 +27,7 @@ namespace PVDataSampler.Sml
             m_clientId = m_encoding != null ? new SmlString(a_clientId.ValueBytes, m_encoding) : a_clientId;
             m_requestFileId = m_encoding != null ? new SmlString(a_requestFileId.ValueBytes, m_encoding) : a_requestFileId;
             m_serverId = m_encoding != null ? new SmlString(a_serverId.ValueBytes, m_encoding) : a_serverId;
-            m_time = null;
+            m_time = a_time;
             m_version = a_version;
         }
 
@@ -55,12 +55,22 @@ namespace PVDataSampler.Sml
                 return null;
 
             var refTime = list.GetElement(4);
+            SmlTime time;
+            if (refTime.IsOptional)
+                time = null;
+            else
+            {
+                time = SmlTime.Create(refTime);
+                if (time == null)
+                    return null;
+            }
+
 
             var version = list.GetElement(5) as SmlUnsigned8;
             if (version == null && !list.GetElement(1).IsOptional)
                 return null;
 
-            return new SmlOpenResponse(codePage, clientId, requestFileId, serverId, version);
+            return new SmlOpenResponse(codePage, clientId, requestFileId, serverId, time, version);
         }
 
 
@@ -69,6 +79,7 @@ namespace PVDataSampler.Sml
         public byte[] ClientIdBytes => m_clientId?.ValueBytes;
         public string RequestFileId => m_requestFileId?.ValueString;
         public byte[] RequestFileIdBytes => m_requestFileId?.ValueBytes;
+        public SmlTime RefTime => m_time;
         public string ServerId => m_serverId?.ValueString;
         public byte[] ServerIdBytes => m_serverId?.ValueBytes;
 

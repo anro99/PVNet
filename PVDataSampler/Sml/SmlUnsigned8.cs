@@ -6,13 +6,8 @@ using System.Threading.Tasks;
 
 namespace PVDataSampler.Sml
 {
-    internal class SmlUnsigned8 : SmlSimpleValue<byte?>
+    internal class SmlUnsigned8 : SmlSimpleValue<byte>
     {
-        public SmlUnsigned8()
-            : base()
-        {
-        }
-
         public SmlUnsigned8(SmlTypeLengthField a_smlTypeLengthField)
             : base(a_smlTypeLengthField)
         {
@@ -20,9 +15,9 @@ namespace PVDataSampler.Sml
 
         protected override SmlFieldType CorespondingSmlType => SmlFieldType.Unsigned8;
 
-        protected override byte? InitialValue => 0;
+        protected override byte InitialValue => 0;
 
-        protected override byte? AddNextByte(byte? a_currentValue, byte a_nextByte)
+        protected override byte AddNextByte(byte a_currentValue, byte a_nextByte)
         {
             return a_nextByte;
         }
