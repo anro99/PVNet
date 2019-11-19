@@ -25,7 +25,7 @@ namespace PVDataSampler.Sml
                 throw (new ArgumentNullException());
 
             m_tl = a_typeLengthField;
-            if (a_typeLengthField.Type != SmlFieldType.List)
+            if (a_typeLengthField.SmlFieldType != SmlFieldType.List)
                 m_state = State.Failed;
             else
             {
@@ -36,6 +36,8 @@ namespace PVDataSampler.Sml
                 m_state = State.WaitForNextListElement;
             }
         }
+
+        public override SmlFieldType SmlFieldType => SmlFieldType.List;
 
         public int Length => m_elements == null ? 0 : m_elements.Length;
 

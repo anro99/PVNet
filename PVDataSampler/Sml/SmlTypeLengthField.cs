@@ -35,7 +35,7 @@ namespace PVDataSampler.Sml
         private static SmlTypeLengthField s_optional = new SmlTypeLengthField() { m_type = SmlFieldType.Optional, m_state = State.Done, m_length = 1, m_nbTlBytes = 1};
         private static SmlTypeLengthField s_eom = new SmlTypeLengthField() { m_type = SmlFieldType.EndOfMessage, m_state = State.Done, m_length = 1, m_nbTlBytes = 1 };
 
-        public SmlFieldType Type => m_type;
+        public override SmlFieldType SmlFieldType => m_type;
         public int FieldLength => m_length;
         public int ValueLength => m_length - m_nbTlBytes;
         public int NbListElements => m_length;

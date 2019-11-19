@@ -17,6 +17,8 @@ namespace PVDataSampler.Sml
         {
         }
 
+        public override SmlFieldType SmlFieldType => throw new NotImplementedException();
+
         private enum State
         {
             Done,

@@ -63,7 +63,7 @@ namespace PVDataSampler.Sml
         public SmlMessageType MessageType => m_messageType;
         public SmlMessageBody MessageBody => m_body;
 
-
+        public override SmlFieldType SmlFieldType => throw new NotImplementedException();
 
         private enum State
         {
@@ -128,7 +128,7 @@ namespace PVDataSampler.Sml
                 return EndWithFailed();
 
             var eom = list.GetElement(5) as SmlTypeLengthField;
-            if (eom == null || eom.Type != SmlFieldType.EndOfMessage)
+            if (eom == null || eom.SmlFieldType != SmlFieldType.EndOfMessage)
                 return EndWithFailed();
 
             m_state = State.Done;

@@ -97,7 +97,9 @@
     <Compile Include="Sml\SmlBool.cs" />
     <Compile Include="Sml\SmlCloseResponse.cs" />
     <Compile Include="Sml\SmlFile.cs" />
+    <Compile Include="Sml\SmlGetListResponse.cs" />
     <Compile Include="Sml\SmlList.cs" />
+    <Compile Include="Sml\SmlListEntry.cs" />
     <Compile Include="Sml\SmlMessage.cs" />
     <Compile Include="Sml\SmlMessageBody.cs" />
     <Compile Include="Sml\SmlOpenResponse.cs" />

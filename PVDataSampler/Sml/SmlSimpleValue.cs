@@ -22,7 +22,7 @@ namespace PVDataSampler.Sml
             if (a_typeLengthField != null)
             {
                 m_tl = a_typeLengthField;
-                if (a_typeLengthField.Type != CorespondingSmlType)
+                if (a_typeLengthField.SmlFieldType != CorespondingSmlType)
                     m_state = State.Failed;
                 else
                 {
@@ -38,6 +38,8 @@ namespace PVDataSampler.Sml
         protected abstract SmlFieldType CorespondingSmlType { get; }
         protected abstract T InitialValue { get;  }
         protected abstract T AddNextByte(T a_currentValue, byte a_nextByte);
+
+        public override SmlFieldType SmlFieldType => CorespondingSmlType;
 
         public T Value => m_value;
 

@@ -18,6 +18,8 @@ namespace PVDataSampler.Sml
     {
         public virtual bool IsOptional => false;
 
+        public abstract SmlFieldType SmlFieldType { get; }
+
         public abstract ParseResult BeginPopulate();
 
         public abstract ParseResult ContinuePopulate(byte a_byte);

@@ -29,7 +29,13 @@ namespace PVDataSampler.Sml
         public static SmlTime Create(SmlBase a_baseNode)
         {
             var list = a_baseNode as SmlList;
-            if (list == null || list.Length != 2)
+            if (list == null)
+            {
+                if (a_baseNode.SmlFieldType != SmlFieldType.Unsigned32)
+                    return null;
+                return new SmlTime(TimeSpan.FromSeconds((a_baseNode as SmlUnsigned32).Value));
+            }
+            else if (list.Length != 2)
                 return null;
 
             var choice = list.GetElement(0) as SmlUnsigned8;

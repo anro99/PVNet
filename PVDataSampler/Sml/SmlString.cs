@@ -73,6 +73,7 @@ namespace PVDataSampler.Sml
         {
             a_currentValue[m_nbAdded] = a_nextByte;
             m_nbAdded++;
+            m_bytes = a_currentValue;
             return a_currentValue;
         }
     }

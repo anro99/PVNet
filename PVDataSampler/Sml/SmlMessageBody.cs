@@ -28,6 +28,8 @@ namespace PVDataSampler.Sml
                     return SmlOpenResponse.Create(a_baseNode);
                 case SmlMessageType.CloseResponse:
                     return SmlCloseResponse.Create(a_baseNode);
+                case SmlMessageType.GetListResponse:
+                    return SmlGetListResponse.Create(a_baseNode);
             }
 
             return new SmlMessageBody(a_baseNode);
